@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bangladesh Photo Hunt — Real Location Explorer</title>
+<meta name="description" content="বাংলাদেশের বাস্তব বিভাগ, জেলা, উপজেলা, ইউনিয়ন ও যাচাইকৃত লোকেশন দিয়ে Photo Hunt.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="topbar"><div class="brand"><span class="brand-mark">📸</span><div><b>Photo Hunt BD</b><small>বাংলাদেশকে ছবিতে আবিষ্কার করুন</small></div></div>
+<nav><a href="#hunt">Hunt</a><a href="#explore">Explore</a><a href="#leaderboard">Leaderboard</a><button id="authBtn" class="btn ghost">Login</button></nav></header>
+
+<main>
+<section class="hero">
+<div class="hero-copy"><div class="eyebrow">🇧🇩 REAL BANGLADESH • GPS VERIFIED</div>
+<h1>বাংলাদেশের <span>প্রতিটি কোণ</span><br>ছবিতে ধরে রাখুন।</h1>
+<p>বিভাগ → জেলা → উপজেলা → ইউনিয়ন/ওয়ার্ড → গ্রাম/লোকালিটি ধরে Photo Mission complete করুন।</p>
+<div class="hero-actions"><a class="btn primary" href="#hunt">আজকের Hunt শুরু</a><a class="btn secondary" href="#explore">লোকেশন দেখুন</a></div>
+<div class="trust"><span>✓ সরকারি hierarchy</span><span>✓ GPS check</span><span>✓ Cloudinary ready</span></div></div>
+<div class="map-card"><div class="map-head"><b>বাংলাদেশ Explorer</b><span id="dataStatus">Loading data…</span></div><div id="map"></div></div>
+</section>
+
+<section class="stats"><div><b id="divisionCount">8</b><span>বিভাগ</span></div><div><b id="districtCount">64</b><span>জেলা</span></div><div><b id="upazilaCount">—</b><span>উপজেলা</span></div><div><b id="unionCount">—</b><span>ইউনিয়ন</span></div><div><b id="villageCount">90,049*</b><span>গ্রাম*</span></div></section>
+
+<section id="hunt" class="section"><div class="section-title"><div><span class="eyebrow">LIVE MISSIONS</span><h2>আজ কোথায় ছবি তুলবেন?</h2></div><button class="btn secondary" id="nearbyBtn">📍 কাছের Mission</button></div>
+<div class="mission-grid" id="missionGrid"></div></section>
+
+<section id="explore" class="section explorer"><div class="section-title"><div><span class="eyebrow">REAL LOCATION DATA</span><h2>বাংলাদেশ Location Explorer</h2></div><div class="search"><input id="searchBox" placeholder="জেলা / উপজেলা / ইউনিয়ন খুঁজুন…"><button id="searchBtn">Search</button></div></div>
+<div class="crumb" id="crumb">বাংলাদেশ</div><div class="explore-grid"><aside class="tree" id="tree"></aside><article class="detail" id="detail"><div class="empty"><div>🗺️</div><h3>একটি লোকেশন বাছাই করুন</h3><p>বাম পাশ থেকে বিভাগ → জেলা → উপজেলা → ইউনিয়ন নির্বাচন করুন।</p></div></article></div></section>
+
+<section id="leaderboard" class="section"><div class="section-title"><div><span class="eyebrow">COMMUNITY</span><h2>Leaderboard</h2></div><span class="pill">Real user data after login</span></div>
+<div class="leaderboard" id="leaderboardList"><div class="empty small">Supabase connect করলে এখানে বাস্তব user ranking দেখাবে।</div></div></section>
+</main>
+
+<footer><div><b>Photo Hunt BD</b><p>Real administrative data + community photography.</p></div><div><b>Data policy</b><p>Administrative hierarchy is sourced from Bangladesh National Portal / public derived datasets. Village and mouza are not assumed to be the same thing.</p></div></footer>
+
+<div class="modal hidden" id="authModal"><div class="modal-card"><button class="x" data-close>×</button><h2 id="authTitle">Login</h2><p>Supabase project keys বসালে real account system চালু হবে।</p><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password"><button class="btn primary full" id="submitAuth">Continue</button><button class="link" id="toggleAuth">Create account</button><div id="authMsg"></div></div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="./app.js"></script>
+</body></html>
