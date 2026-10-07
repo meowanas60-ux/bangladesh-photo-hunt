@@ -164,7 +164,6 @@ async function submitExplore(gps){
     const {data,error}=await supabase.from("submissions").insert({
       user_id:currentUser.id, mission_id:null, cloudinary_url:uploaded.secure_url, cloudinary_public_id:uploaded.public_id,
       captured_lat:gps.lat,captured_lng:gps.lng,distance_m:null,gps_verified:true,status:"pending",caption,
-      location_label:[loc.village,loc.union_name,loc.upazila,loc.district,loc.division].filter(Boolean).join(" • "),
       ...loc
     }).select("*").single();
     if(error)throw error;
@@ -175,10 +174,27 @@ async function submitExplore(gps){
 }
 
 async function uploadCloudinary(file){
-  if(!CONFIG.cloudinaryCloudName||!CONFIG.cloudinaryUploadPreset)throw new Error("Cloudinary config নেই। Render-এ CLOUDINARY_CLOUD_NAME এবং CLOUDINARY_UPLOAD_PRESET দিন।");
-  const fd=new FormData(); fd.append("file",file); fd.append("upload_preset",CONFIG.cloudinaryUploadPreset); fd.append("folder","photo-hunt-bd");
-  const r=await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CONFIG.cloudinaryCloudName)}/image/upload`,{method:"POST",body:fd});
-  const d=await r.json(); if(!r.ok)throw new Error(d.error?.message||"Cloudinary upload failed"); return d;
+  if(!CONFIG.cloudinaryCloudName||!CONFIG.cloudinaryUploadPreset){
+    throw new Error("Cloudinary config নেই। Render Environment-এ CLOUDINARY_CLOUD_NAME এবং CLOUDINARY_UPLOAD_PRESET check করুন।");
+  }
+  if(!file.type.startsWith("image/")) throw new Error("শুধু image file upload করা যাবে।");
+  if(file.size > 10 * 1024 * 1024) throw new Error("Photo size 10MB-এর বেশি হতে পারবে না.");
+  const fd=new FormData();
+  fd.append("file",file);
+  fd.append("upload_preset",CONFIG.cloudinaryUploadPreset);
+  fd.append("folder","photo-hunt-bd");
+  let r;
+  try{
+    r=await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CONFIG.cloudinaryCloudName)}/image/upload`,{method:"POST",body:fd});
+  }catch(e){
+    throw new Error("Cloudinary-তে connection করা যাচ্ছে না। Internet/CORS বা Upload Preset check করুন।");
+  }
+  const text=await r.text();
+  let d={};
+  try{ d=JSON.parse(text); }catch{}
+  if(!r.ok) throw new Error(d?.error?.message || `Cloudinary upload failed (${r.status})`);
+  if(!d.secure_url) throw new Error("Cloudinary response-এ image URL পাওয়া যায়নি.");
+  return d;
 }
 
 async function loadMissions(){
@@ -207,7 +223,7 @@ function openMissionModal(m){
     const file=$("#mPhoto")?.files?.[0]; if(!file){$("#mStatus").textContent="Photo নির্বাচন করুন।";return;} if(!gps){$("#mStatus").textContent="GPS Verify করুন।";return;}
     const radius=Number(m.radius_m||150); if(gps.distance>radius){$("#mStatus").innerHTML=`<span class="bad">❌ আপনি mission radius-এর বাইরে (${Math.round(gps.distance)}m)।</span>`;return;}
     const b=$("#mSubmit");b.disabled=true;b.textContent="⏳ Uploading…";
-    try{const up=await uploadCloudinary(file);const loc={division:m.division||"",district:m.district||"",upazila:m.upazila||"",union_name:m.union_name||"",village:m.village||"",mouza:m.mouza||""};const {data,error}=await supabase.from("submissions").insert({user_id:currentUser.id,mission_id:m.id,cloudinary_url:up.secure_url,cloudinary_public_id:up.public_id,captured_lat:gps.lat,captured_lng:gps.lng,distance_m:gps.distance,gps_verified:true,status:"pending",caption:$("#mCaption")?.value.trim()||"",location_label:[loc.village,loc.union_name,loc.upazila,loc.district,loc.division].filter(Boolean).join(" • "),...loc}).select("*").single();if(error)throw error;$("#mStatus").innerHTML='<span class="ok">✅ Photo submitted. Admin approval-এর পর Explore count হবে।</span>';b.textContent="Submitted ✓";await showPhotoCard({submission:data,username:currentProfile?.username||"Explorer",pending:true,file});}catch(e){$("#mStatus").innerHTML=`<span class="bad">❌ ${esc(e.message)}</span>`;b.disabled=false;b.textContent="🚀 Submit Photo";}
+    try{const up=await uploadCloudinary(file);const loc={division:m.division||"",district:m.district||"",upazila:m.upazila||"",union_name:m.union_name||"",village:m.village||"",mouza:m.mouza||""};const {data,error}=await supabase.from("submissions").insert({user_id:currentUser.id,mission_id:m.id,cloudinary_url:up.secure_url,cloudinary_public_id:up.public_id,captured_lat:gps.lat,captured_lng:gps.lng,distance_m:gps.distance,gps_verified:true,status:"pending",caption:$("#mCaption")?.value.trim()||"",...loc}).select("*").single();if(error)throw error;$("#mStatus").innerHTML='<span class="ok">✅ Photo submitted. Admin approval-এর পর Explore count হবে।</span>';b.textContent="Submitted ✓";await showPhotoCard({submission:data,username:currentProfile?.username||"Explorer",pending:true,file});}catch(e){$("#mStatus").innerHTML=`<span class="bad">❌ ${esc(e.message)}</span>`;b.disabled=false;b.textContent="🚀 Submit Photo";}
   };
 }
 
@@ -227,10 +243,10 @@ async function renderLeaderboard(){
 
 async function loadCommunityPhotos(){
   const box=$("#photoGrid"); if(!box||!supabase)return;
-  const {data,error}=await supabase.from("submissions").select("id,user_id,cloudinary_url,caption,location_label,division,district,upazila,union_name,created_at").eq("status","approved").order("created_at",{ascending:false}).limit(12);
+  const {data,error}=await supabase.from("submissions").select("id,user_id,cloudinary_url,caption,division,district,upazila,union_name,village,mouza,created_at").eq("status","approved").order("created_at",{ascending:false}).limit(12);
   if(error||!data?.length){box.innerHTML=`<div class="empty small">Approved exploration photos এখানে দেখাবে।</div>`;return;}
   const ids=[...new Set(data.map(x=>x.user_id))]; let names={}; if(ids.length){const {data:p}=await supabase.from("profiles").select("id,username").in("id",ids);(p||[]).forEach(x=>names[x.id]=x.username);}
-  box.innerHTML=data.map(x=>`<article class="photo-card"><img src="${esc(x.cloudinary_url)}" alt="${esc(x.location_label||"Bangladesh")}" loading="lazy"><div class="photo-card-body"><small>📍 ${esc(x.location_label||x.district||"Bangladesh")}</small><h3>${esc(names[x.user_id]||"Explorer")}</h3><p>${esc(x.caption||"")}</p><button class="btn secondary" onclick="window.shareExistingCard('${x.id}')">↗ Share card</button></div></article>`).join("");
+  box.innerHTML=data.map(x=>`<article class="photo-card"><img src="${esc(x.cloudinary_url)}" alt="${esc([x.village,x.union_name,x.upazila,x.district,x.division].filter(Boolean).join(" • ")||"Bangladesh")}" loading="lazy"><div class="photo-card-body"><small>📍 ${esc(x.location_label||x.district||"Bangladesh")}</small><h3>${esc(names[x.user_id]||"Explorer")}</h3><p>${esc(x.caption||"")}</p><button class="btn secondary" onclick="window.shareExistingCard('${x.id}')">↗ Share card</button></div></article>`).join("");
 }
 window.shareExistingCard=async(id)=>{
   if(!supabase)return; const {data}=await supabase.from("submissions").select("*").eq("id",id).single(); if(!data)return; const {data:p}=await supabase.from("profiles").select("username").eq("id",data.user_id).single(); await showPhotoCard({submission:data,username:p?.username||"Explorer"});
